@@ -10,4 +10,4 @@ pip install .
 
 ## Usage
 
-Run main.py in katamino_csp_solver
+Run `main.py` in `katamino_csp_solver`
