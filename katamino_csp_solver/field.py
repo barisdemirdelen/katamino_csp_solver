@@ -2,8 +2,8 @@ from collections.abc import Iterable
 
 import numpy as np
 
-from pieces import PieceConfig, get_rotated_shape, get_shape_min_x_y
-from util import get_min_x_y
+from katamino_csp_solver.pieces import PieceConfig, get_rotated_shape, get_shape_min_x_y
+from katamino_csp_solver.util import get_min_x_y
 
 
 class InvalidPlacementError(Exception):

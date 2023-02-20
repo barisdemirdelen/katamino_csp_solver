@@ -3,8 +3,8 @@ from collections.abc import Generator
 
 import numpy as np
 
-from field import Field, InvalidPlacementError
-from katamino_solver.pieces import (
+from katamino_csp_solver.field import Field, InvalidPlacementError
+from katamino_csp_solver.pieces import (
     PieceConfig,
 )
 

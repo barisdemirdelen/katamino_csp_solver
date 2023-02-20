@@ -3,15 +3,15 @@ import itertools
 import matplotlib.pyplot as plt
 from constraint import Problem
 
-from field import Field
-from katamino_solver.constraints import (
+from katamino_csp_solver.field import Field
+from katamino_csp_solver.constraints import (
     ValidAssignmentConstraint,
     AllDifferentPieceConstraint,
     OnlyLastOrdersCanBeUnusedConstraint,
     FieldMustBeFullConstraint,
     NoHolesOfXConstraint,
 )
-from pieces import (
+from katamino_csp_solver.pieces import (
     PIECES,
     get_shape_permutations,
     PieceConfig,

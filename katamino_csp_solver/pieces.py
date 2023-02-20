@@ -4,7 +4,7 @@ from functools import lru_cache
 
 import numpy as np
 
-from util import get_min_x_y
+from katamino_csp_solver.util import get_min_x_y
 
 PIECES = [
     np.array([[1, 1, 1, 1, 1]], dtype=bool),
