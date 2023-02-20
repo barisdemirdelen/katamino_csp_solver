@@ -167,13 +167,3 @@ class NoHolesOfXConstraint(FieldConstraint):
             if count <= self.max_hole_zeros:
                 return False
         return True
-
-        # zero_x, zero_y = get_min_x_y(field)
-        # if zero_x is None:
-        #     return True
-        # count = search_neighbours(
-        #     field, zero_x, zero_y, self.max_x, self.max_y, visited, 1
-        # )
-        # if count <= self.max_hole_zeros:
-        #     return False
-        # return True

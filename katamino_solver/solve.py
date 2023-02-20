@@ -45,7 +45,6 @@ def solve(max_x, max_y):
     for i, j in itertools.combinations(range(len(pieces)), 2):
         problem.addConstraint(AllDifferentPieceConstraint(), [i, j])
 
-    # problem.addConstraint(AllDifferentPieceConstraint())
     if max_y < 12:
         problem.addConstraint(OnlyLastOrdersCanBeUnusedConstraint())
 
@@ -55,12 +54,6 @@ def solve(max_x, max_y):
         problem.addConstraint(ValidAssignmentConstraint(max_x, max_y), range(i + 1))
         problem.addConstraint(NoHolesOfXConstraint(max_x, max_y, 3), range(i + 1))
 
-    #
-    # for i in range(4):
-    #     combinations = itertools.combinations(range(len(pieces)), i + 1)
-    #     for combination in combinations:
-    #         problem.addConstraint(NoHolesOfXConstraint(max_x, max_y, 3), combination)
-    #
     problem.addConstraint(FieldMustBeFullConstraint(max_x, max_y))
 
     solution = problem.getSolution()
