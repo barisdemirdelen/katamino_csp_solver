@@ -36,9 +36,6 @@ def define_constraints(problem: Problem, max_x: int, max_y: int) -> None:
     for i, j in itertools.combinations(range(len(PIECES)), 2):
         problem.addConstraint(AllDifferentPieceConstraint(), [i, j])
 
-    if max_y < 12:
-        problem.addConstraint(OnlyLastOrdersCanBeUnusedConstraint())
-
     for i in range(len(PIECES)):
         if max_y < 12:
             problem.addConstraint(OnlyLastOrdersCanBeUnusedConstraint(), range(i + 1))
@@ -63,7 +60,7 @@ def solve(
     :param max_x: x dimension of the board
     :param max_y: y dimension of the board
     :param verbose: If we should print the solution
-    :param show_grid: IF we should show an image containing the solution
+    :param show_grid: If we should show an image containing the solution
     :return: A solution dictionary containing the placement order as keys and PieceConfig as values
     """
 
