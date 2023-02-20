@@ -2,8 +2,6 @@ import itertools
 
 import matplotlib.pyplot as plt
 from constraint import Problem
-
-from katamino_csp_solver.field import Field
 from katamino_csp_solver.constraints import (
     ValidAssignmentConstraint,
     AllDifferentPieceConstraint,
@@ -11,6 +9,7 @@ from katamino_csp_solver.constraints import (
     FieldMustBeFullConstraint,
     NoHolesOfXConstraint,
 )
+from katamino_csp_solver.field import Field
 from katamino_csp_solver.pieces import (
     PIECES,
     get_shape_permutations,
@@ -45,7 +44,9 @@ def define_constraints(problem: Problem, max_x: int, max_y: int) -> None:
     problem.addConstraint(FieldMustBeFullConstraint(max_x, max_y))
 
 
-def solve(max_x, max_y, verbose=True, show_grid=True):
+def solve(
+    max_x: int, max_y: int, verbose: bool = True, show_grid: bool = True
+) -> dict[int, PieceConfig]:
     problem = Problem()
 
     define_variables(problem, max_y=max_y)
