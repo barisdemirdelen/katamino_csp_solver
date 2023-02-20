@@ -1,9 +1,9 @@
 import itertools
 
 import matplotlib.pyplot as plt
-import numpy as np
 from constraint import Problem
 
+from field import Field
 from katamino_solver.constraints import (
     ValidAssignmentConstraint,
     AllDifferentPieceConstraint,
@@ -12,43 +12,31 @@ from katamino_solver.constraints import (
     NoHolesOfXConstraint,
 )
 from pieces import (
-    pieces,
+    PIECES,
     get_shape_permutations,
-    get_rotated_shape,
-    place_number,
     PieceConfig,
-    get_min_x_y,
-    get_shape_min_x_y,
 )
 
 
-def get_coords(max_x, max_y):
-    coords = []
-    for x in range(max_x):
-        for y in range(max_y):
-            coords.append((x, y))
-    return coords
-
-
-def solve(max_x, max_y):
-    problem = Problem()
-
-    for order in range(len(pieces)):
+def define_variables(problem: Problem, max_y: int) -> None:
+    for order in range(len(PIECES)):
         domain = []
         if max_y < 12:
             domain.append(PieceConfig(order, -1, -1, -1))
-        for idx in range(len(pieces)):
+        for idx in range(len(PIECES)):
             for rot, rev in get_shape_permutations(idx):
                 domain.append(PieceConfig(order, idx, rot, int(rev)))
         problem.addVariable(order, domain)
 
-    for i, j in itertools.combinations(range(len(pieces)), 2):
+
+def define_constraints(problem: Problem, max_x: int, max_y: int) -> None:
+    for i, j in itertools.combinations(range(len(PIECES)), 2):
         problem.addConstraint(AllDifferentPieceConstraint(), [i, j])
 
     if max_y < 12:
         problem.addConstraint(OnlyLastOrdersCanBeUnusedConstraint())
 
-    for i in range(len(pieces)):
+    for i in range(len(PIECES)):
         if max_y < 12:
             problem.addConstraint(OnlyLastOrdersCanBeUnusedConstraint(), range(i + 1))
         problem.addConstraint(ValidAssignmentConstraint(max_x, max_y), range(i + 1))
@@ -56,27 +44,26 @@ def solve(max_x, max_y):
 
     problem.addConstraint(FieldMustBeFullConstraint(max_x, max_y))
 
+
+def solve(max_x, max_y, verbose=True, show_grid=True):
+    problem = Problem()
+
+    define_variables(problem, max_y=max_y)
+    define_constraints(problem, max_x=max_x, max_y=max_y)
+
     solution = problem.getSolution()
     assert solution is not None
 
-    field = np.zeros((max_y, max_x), dtype=np.int8)
-    for order, piece_no, rotation, reverse in solution.values():
-        if piece_no == -1:
-            break
-        shape = get_rotated_shape(piece_no, rotation, reverse)
-        x, y = get_min_x_y(field)
-        if x is None:
-            break
+    field = Field(max_x, max_y)
+    list(field.place_pieces(solution.values(), place_label=True))
 
-        shape_min_x, shape_min_y = get_shape_min_x_y(piece_no, rotation, reverse)
+    if verbose:
+        print(field.grid)
+        print(solution)
 
-        place_number(field, shape, x - shape_min_x, y - shape_min_y, piece_no)
-
-    print(field)
-    print(solution)
-
-    plt.imshow(field, cmap="inferno", aspect="equal")
-    plt.show()
+    if show_grid:
+        plt.imshow(field.grid, cmap="inferno", aspect="equal")
+        plt.show()
 
     return solution
 

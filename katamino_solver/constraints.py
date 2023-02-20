@@ -1,43 +1,61 @@
-import numba
+import abc
+from collections.abc import Generator
+
 import numpy as np
 
+from field import Field, InvalidPlacementError
 from katamino_solver.pieces import (
-    get_rotated_shape,
-    place,
     PieceConfig,
-    create_field,
-    get_min_x_y,
-    get_shape_min_x_y,
 )
 
 
-class FieldConstraint:
+class PieceOrderConstraint(abc.ABC):
+    def __call__(self, *piece_configs: PieceConfig):
+        return self.evaluate(list(piece_configs))
+
+    @abc.abstractmethod
+    def evaluate(self, piece_configs: list[PieceConfig]) -> bool:
+        pass
+
+
+class FieldConstraint(abc.ABC):
     def __init__(self, max_x, max_y):
         self.max_x = max_x
         self.max_y = max_y
 
+    def create_field(self):
+        return Field(self.max_x, self.max_y)
 
-class AllDifferentPieceConstraint:
-    # @lru_cache(maxsize=None)
-    def __call__(self, *piece_configs: list[PieceConfig]):
+    def __call__(self, *piece_configs: PieceConfig):
+        field = self.create_field()
+        try:
+            _ = list(field.place_pieces(piece_configs))
+        except InvalidPlacementError:
+            return False
+        return self.evaluate(field)
+
+    @abc.abstractmethod
+    def evaluate(self, field: Field) -> bool:
+        pass
+
+
+class AllDifferentPieceConstraint(PieceOrderConstraint):
+    def evaluate(self, piece_configs: list[PieceConfig]) -> bool:
         used_pieces = set()
         for piece_config in piece_configs:
-            order, piece_no, rotation, reverse = piece_config
-            if piece_no == -1:
+            if piece_config.piece_index == -1:
                 continue
-            if piece_no in used_pieces:
+            if piece_config.piece_index in used_pieces:
                 return False
-            used_pieces.add(piece_no)
+            used_pieces.add(piece_config.piece_index)
         return True
 
 
-class OnlyLastOrdersCanBeUnusedConstraint:
-    # @lru_cache(maxsize=None)
-    def __call__(self, *piece_configs: list[PieceConfig]):
+class OnlyLastOrdersCanBeUnusedConstraint(PieceOrderConstraint):
+    def evaluate(self, piece_configs: list[PieceConfig]) -> bool:
         unused_found = False
         for piece_config in piece_configs:
-            order, piece_no, rotation, reverse = piece_config
-            if piece_no == -1:
+            if piece_config.piece_index == -1:
                 unused_found = True
             elif unused_found:
                 return False
@@ -45,87 +63,13 @@ class OnlyLastOrdersCanBeUnusedConstraint:
 
 
 class FieldMustBeFullConstraint(FieldConstraint):
-    # @lru_cache(maxsize=None)
-    def __call__(self, *piece_configs: list[PieceConfig]):
-        field = create_field(self.max_x, self.max_y)
-        for piece_config in piece_configs:
-            order, piece_no, rotation, reverse = piece_config
-            if piece_no == -1:
-                break
-
-            shape = get_rotated_shape(piece_no, rotation, reverse)
-
-            x, y = get_min_x_y(field)
-            if x is None:
-                break
-
-            shape_min_x, shape_min_y = get_shape_min_x_y(piece_no, rotation, reverse)
-
-            if (
-                x - shape_min_x < 0
-                or y - shape_min_y < 0
-                or x - shape_min_x + shape.shape[1] > self.max_x
-                or y - shape_min_y + shape.shape[0] > self.max_y
-            ):
-                return False
-
-            place(field, shape, x - shape_min_x, y - shape_min_y)
-
-        return np.all(field == 1)
+    def evaluate(self, field: Field) -> bool:
+        return np.all(field.grid == 1)
 
 
 class ValidAssignmentConstraint(FieldConstraint):
-    # @lru_cache(maxsize=None)
-    def __call__(self, *piece_configs: list[PieceConfig]):
-        field = create_field(self.max_x, self.max_y)
-        for piece_config in piece_configs:
-            order, piece_no, rotation, reverse = piece_config
-            if piece_no == -1:
-                break
-
-            shape = get_rotated_shape(piece_no, rotation, reverse)
-
-            x, y = get_min_x_y(field)
-            if x is None:
-                break
-
-            shape_min_x, shape_min_y = get_shape_min_x_y(piece_no, rotation, reverse)
-
-            if (
-                x - shape_min_x < 0
-                or y - shape_min_y < 0
-                or x - shape_min_x + shape.shape[1] > self.max_x
-                or y - shape_min_y + shape.shape[0] > self.max_y
-            ):
-                return False
-
-            place(field, shape, x - shape_min_x, y - shape_min_y)
-
-        return np.max(field) == 1
-
-
-@numba.njit(cache=True)
-def get_neighbours(field, x, y, max_x, max_y):
-    if x - 1 >= 0 and field[y, x - 1] == 0:
-        yield y, x - 1
-    if y - 1 >= 0 and field[y - 1, x] == 0:
-        yield y - 1, x
-    if x + 1 < max_x and field[y, x + 1] == 0:
-        yield y, x + 1
-    if y + 1 < max_y and field[y + 1, x] == 0:
-        yield y + 1, x
-
-
-@numba.njit(cache=True)
-def search_neighbours(field, x, y, max_x, max_y, visited, current_count):
-    for ny, nx in get_neighbours(field, x, y, max_x, max_y):
-        if (ny, nx) in visited:
-            continue
-        visited.add((ny, nx))
-        current_count = (
-            search_neighbours(field, nx, ny, max_x, max_y, visited, current_count) + 1
-        )
-    return current_count
+    def evaluate(self, field: Field) -> bool:
+        return np.max(field.grid) == 1
 
 
 class NoHolesOfXConstraint(FieldConstraint):
@@ -133,29 +77,37 @@ class NoHolesOfXConstraint(FieldConstraint):
         super().__init__(max_x, max_y)
         self.max_hole_zeros = max_hole_zeros
 
-    def __call__(self, *piece_configs):
-        field = create_field(self.max_x, self.max_y)
-        for order, piece_no, rotation, reverse in piece_configs:
-            if order == -1:
-                break
-            shape = get_rotated_shape(piece_no, rotation, reverse)
-            x, y = get_min_x_y(field)
-            if x is None:
-                break
+    def _get_neighbours(
+        self, grid: np.ndarray, x: int, y: int
+    ) -> Generator[tuple[int, int], None, None]:
+        if x - 1 >= 0 and grid[y, x - 1] == 0:
+            yield y, x - 1
+        if y - 1 >= 0 and grid[y - 1, x] == 0:
+            yield y - 1, x
+        if x + 1 < self.max_x and grid[y, x + 1] == 0:
+            yield y, x + 1
+        if y + 1 < self.max_y and grid[y + 1, x] == 0:
+            yield y + 1, x
 
-            shape_min_x, shape_min_y = get_shape_min_x_y(piece_no, rotation, reverse)
+    def _search_neighbours(
+        self,
+        grid: np.ndarray,
+        x: int,
+        y: int,
+        visited: set[tuple[int, int]],
+        current_count: int = 1,
+    ):
+        for ny, nx in self._get_neighbours(grid, x, y):
+            if (ny, nx) in visited:
+                continue
+            visited.add((ny, nx))
+            current_count = (
+                self._search_neighbours(grid, nx, ny, visited, current_count) + 1
+            )
+        return current_count
 
-            if (
-                x - shape_min_x < 0
-                or y - shape_min_y < 0
-                or x - shape_min_x + shape.shape[1] > self.max_x
-                or y - shape_min_y + shape.shape[0] > self.max_y
-            ):
-                return False
-
-            place(field, shape, x - shape_min_x, y - shape_min_y)
-
-        visited = {(-1, -1)}
+    def evaluate(self, field: Field) -> bool:
+        visited = set()
         zero_locs = np.where(field == 0)
         if not zero_locs or len(zero_locs[0]) == 0:
             return True
@@ -163,7 +115,7 @@ class NoHolesOfXConstraint(FieldConstraint):
         for y, x in zip(*zero_locs):
             if (y, x) in visited:
                 continue
-            count = search_neighbours(field, x, y, self.max_x, self.max_y, visited, 1)
+            count = self._search_neighbours(field.grid, x, y, visited)
             if count <= self.max_hole_zeros:
                 return False
         return True
