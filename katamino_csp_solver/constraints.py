@@ -40,6 +40,11 @@ class FieldConstraint(abc.ABC):
 
 
 class AllDifferentPieceConstraint(PieceOrderConstraint):
+    """
+    All pieces used in an order must be different.
+    Same piece cannot be used twice.
+    """
+
     def evaluate(self, piece_configs: list[PieceConfig]) -> bool:
         used_pieces = set()
         for piece_config in piece_configs:
@@ -52,6 +57,12 @@ class AllDifferentPieceConstraint(PieceOrderConstraint):
 
 
 class OnlyLastOrdersCanBeUnusedConstraint(PieceOrderConstraint):
+    """
+    If an order is empty, next orders should also be empty.
+    For example, we cannot have a situation where
+      order 1 is a piece, order 2 is empty but then order 3 is also a piece.
+    """
+
     def evaluate(self, piece_configs: list[PieceConfig]) -> bool:
         unused_found = False
         for piece_config in piece_configs:
@@ -63,22 +74,37 @@ class OnlyLastOrdersCanBeUnusedConstraint(PieceOrderConstraint):
 
 
 class FieldMustBeFullConstraint(FieldConstraint):
+    """
+    A valid solution means there are no empty squares in the field
+    """
+
     def evaluate(self, field: Field) -> bool:
         return np.all(field.grid == 1)
 
 
 class ValidAssignmentConstraint(FieldConstraint):
+    """
+    A valid solution means a maximum of only one piece
+      can be assigned to a coordinate
+    """
+
     def evaluate(self, field: Field) -> bool:
         return np.max(field.grid) == 1
 
 
 class NoHolesOfXConstraint(FieldConstraint):
-    def __init__(self, max_x, max_y, max_hole_zeros):
+    """
+    When assigning, make sure we don't create any holes larger than X
+    By default, a neighbouring square hole means we already cannot fill
+      in this square.
+    """
+
+    def __init__(self, max_x, max_y, max_hole_zeros=3):
         super().__init__(max_x, max_y)
         self.max_hole_zeros = max_hole_zeros
 
     def _get_neighbours(
-        self, grid: np.ndarray, x: int, y: int
+            self, grid: np.ndarray, x: int, y: int
     ) -> Generator[tuple[int, int], None, None]:
         if x - 1 >= 0 and grid[y, x - 1] == 0:
             yield y, x - 1
@@ -90,25 +116,25 @@ class NoHolesOfXConstraint(FieldConstraint):
             yield y + 1, x
 
     def _search_neighbours(
-        self,
-        grid: np.ndarray,
-        x: int,
-        y: int,
-        visited: set[tuple[int, int]],
-        current_count: int = 1,
+            self,
+            grid: np.ndarray,
+            x: int,
+            y: int,
+            visited: set[tuple[int, int]],
+            current_count: int = 1,
     ):
         for ny, nx in self._get_neighbours(grid, x, y):
             if (ny, nx) in visited:
                 continue
             visited.add((ny, nx))
             current_count = (
-                self._search_neighbours(grid, nx, ny, visited, current_count) + 1
+                    self._search_neighbours(grid, nx, ny, visited, current_count) + 1
             )
         return current_count
 
     def evaluate(self, field: Field) -> bool:
         visited = set()
-        zero_locs = np.where(field == 0)
+        zero_locs = np.where(field.grid == 0)
         if not zero_locs or len(zero_locs[0]) == 0:
             return True
 

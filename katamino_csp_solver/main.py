@@ -21,9 +21,13 @@ def define_variables(problem: Problem, max_y: int) -> None:
     for order in range(len(PIECES)):
         domain = []
         if max_y < 12:
+            # We can also not use a piece
             domain.append(PieceConfig(order, -1, -1, -1))
+
         for idx in range(len(PIECES)):
             for rot, rev in get_shape_permutations(idx):
+                # In this order, use a piece with index idx, rotation rot and
+                # optionally reverse the piece
                 domain.append(PieceConfig(order, idx, rot, int(rev)))
         problem.addVariable(order, domain)
 
@@ -45,8 +49,24 @@ def define_constraints(problem: Problem, max_x: int, max_y: int) -> None:
 
 
 def solve(
-    max_x: int, max_y: int, verbose: bool = True, show_grid: bool = True
+        max_x: int, max_y: int, verbose: bool = True, show_grid: bool = True
 ) -> dict[int, PieceConfig]:
+    """
+    This function creates a Constraint Satisfaction Problem (CSP) definition.
+    We create our variables as our placement order, and for a solution we have to
+    assign a PieceConfig to each order variable, that satisfies all the constraints.
+    PieceConfig contains information about which piece and in which configuration is placed
+    into the field.
+    Placement always occurs at the minimum (x, y) coordinate available.
+    After the problem is well-defined, a generic CSP solver can solve the Katamino problem.
+
+    :param max_x: x dimension of the board
+    :param max_y: y dimension of the board
+    :param verbose: If we should print the solution
+    :param show_grid: IF we should show an image containing the solution
+    :return: A solution dictionary containing the placement order as keys and PieceConfig as values
+    """
+
     problem = Problem()
 
     define_variables(problem, max_y=max_y)
