@@ -55,7 +55,7 @@ def solve(max_x, max_y, verbose=True, show_grid=True):
     assert solution is not None
 
     field = Field(max_x, max_y)
-    list(field.place_pieces(solution.values(), place_label=True))
+    field.place_pieces(solution.values(), place_label=True)
 
     if verbose:
         print(field.grid)

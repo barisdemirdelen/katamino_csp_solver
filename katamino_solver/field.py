@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Generator
+from collections.abc import Iterable
 
 import numpy as np
 
@@ -18,7 +18,7 @@ class Field:
 
     def place_pieces(
         self, piece_configs: Iterable[PieceConfig], place_label: bool = False
-    ) -> Generator[PieceConfig, None, None]:
+    ) -> None:
         for piece_config in piece_configs:
             if piece_config.order == -1:
                 return
@@ -47,7 +47,6 @@ class Field:
                 )
             else:
                 self.place(shape, x - shape_min_x, y - shape_min_y)
-            yield piece_config
 
     def place(self, shape: np.ndarray, x: int, y: int) -> None:
         self.grid[y : y + shape.shape[0], x : x + shape.shape[1]] += shape

@@ -29,7 +29,7 @@ class FieldConstraint(abc.ABC):
     def __call__(self, *piece_configs: PieceConfig):
         field = self.create_field()
         try:
-            _ = list(field.place_pieces(piece_configs))
+            field.place_pieces(piece_configs)
         except InvalidPlacementError:
             return False
         return self.evaluate(field)
